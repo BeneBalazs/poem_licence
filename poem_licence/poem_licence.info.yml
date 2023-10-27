@@ -1,0 +1,7 @@
+name: 'Poem licence'
+description: Provides an integration with the general licence holder.
+package: Poem licence
+type: module
+core_version_requirement: ^9
+dependencies:
+  - user:user

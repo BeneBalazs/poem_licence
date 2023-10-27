@@ -1,0 +1,98 @@
+services:
+  logger.channel.poem_licence:
+    parent: logger.channel_base
+    arguments: [ 'poem_licence' ]
+
+  poem_licence.licence_created:
+    class: Drupal\poem_licence\EventSubscriber\LicenceCreated
+    arguments:
+      - '@poem_licence.user_creation_synchronizer'
+      - '@poem_licence.poem_licence_form_synchronizer'
+      - '@entity_type.manager'
+    tags:
+      - { name: 'event_subscriber' }
+
+  poem_licence.repository.user:
+    class: Drupal\poem_licence\PoemLicence\Api\User\UserRepositoryUsingPoemLicenceApi
+    arguments:
+      - '@poem_licence.poem_licence_client'
+      - '@logger.channel.poem_licence'
+
+  poem_licence.repository.licence:
+    class: Drupal\poem_licence\PoemLicence\Api\Licence\LicenceRepositoryUsingPoemLicenceApi
+    arguments:
+      - '@poem_licence.poem_licence_client'
+      - '@logger.channel.poem_licence'
+
+  poem_licence.repository.form:
+    class: Drupal\poem_licence\PoemLicence\Api\Form\FormRepositoryUsingFormApi
+    arguments:
+      - '@poem_licence.poem_licence_client'
+      - '@logger.channel.poem_licence'
+
+  poem_licence.client.configuration_provider:
+    class: Drupal\poem_licence\PoemLicence\Client\Configuration\ClientConfigurationProviderUsingPoemLicenceCredentialsKey
+    arguments: [ '@entity_type.manager']
+
+  poem_licence.poem_licence_client_factory:
+    class: Drupal\poem_licence\PoemLicence\Client\ClientFactory
+    arguments:
+      - '@poem_licence.client.configuration_provider'
+      - '@http_handler_stack_configurator'
+      - '@http_client_factory'
+      - '@settings'
+
+  poem_licence.poem_licence_client:
+    class: GuzzleHttp\Client
+    factory:
+      - '@poem_licence.poem_licence_client_factory'
+      - 'getClient'
+
+  # If poem_licence.client.configuration_provider would not depend on the entity type manager the
+  # definition of this service could be switched in container compile time instead of this runtime workaround.
+  # "Constructing service "entity_type.manager" from a parent definition is not supported at build time."
+  poem_licence.user_creation_synchronizer:
+    class: Drupal\poem_licence\PoemLicence\Integration\UserCreationSynchronizer\UserCreationSynchronizerChooser
+    arguments:
+      - '@poem_licence.client.configuration_provider'
+      - '@poem_licence.user_creation_synchronizer.null'
+      - '@poem_licence.user_creation_synchronizer.poem_licence'
+      - '@logger.channel.poem_licence'
+
+  poem_licence.user_creation_synchronizer.poem_licence:
+    class: Drupal\poem_licence\PoemLicence\Integration\UserCreationSynchronizer\SynchronousUserCreationSynchronizerToPoemLicence
+    public: false
+    arguments:
+      - '@poem_licence.repository.user'
+      - '@logger.channel.poem_licence'
+
+  poem_licence.user_creation_synchronizer.null:
+    class: Drupal\poem_licence\PoemLicence\Integration\UserCreationSynchronizer\NullUserCreationSynchronizer
+    public: false
+
+  # If poem_licence.client.configuration_provider would not depend on the entity type manager the
+  # definition of this service could be switched in container compile time instead of this runtime workaround.
+  # "Constructing service "entity_type.manager" from a parent definition is not supported at build time."
+  poem_licence.poem_licence_form_synchronizer:
+    class: Drupal\poem_licence\PoemLicence\Integration\PoemLicenceFormSync\PoemLicenceFormSynchronizerSynchronizerChooser
+    arguments:
+      - '@poem_licence.client.configuration_provider'
+      - '@poem_licence.poem_licence_form_synchronizer.null'
+      - '@poem_licence.poem_licence_form_synchronizer.poem_licence'
+      - '@logger.channel.poem_licence'
+
+  poem_licence.poem_licence_form_synchronizer.poem_licence:
+    class: Drupal\poem_licence\PoemLicence\Integration\PoemLicenceFormSync\SynchronousPoemLicenceFormSynchronizerToPoemLicence
+    public: false
+    arguments:
+      - '@poem_licence.repository.licence'
+      - '@poem_licence.repository.user'
+      - '@poem_licence.repository.form'
+      - '@entity_print.print_builder'
+      - '@plugin.manager.entity_print.print_engine'
+      - '@file_system'
+      - '@logger.channel.poem_licence'
+
+  poem_licence.poem_licence_form_synchronizer.null:
+    class: Drupal\poem_licence\PoemLicence\Integration\PoemLicenceFormSync\NullLicenceSynchronizer
+    public: false

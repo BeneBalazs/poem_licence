@@ -1,0 +1,5 @@
+key.type.poem_licence_credentials:
+  type: sequence
+
+key.provider.poem_licence_environment_variables:
+  type: sequence
